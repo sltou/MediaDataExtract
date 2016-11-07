@@ -13,6 +13,8 @@ import urlparse
 import subprocess
 import warnings
 import os
+import time
+import datetime
 from utf8Encode import *
 
 #import app ID, app secret, and profile ID
@@ -59,28 +61,48 @@ facebook_graph = facebook.GraphAPI(oauth_access_token)
 '''
 #directory to save the files
 directory = os.path.abspath('/Users/jennytou/Desktop/Umich/Fall2016/ling447/finalPJ/gDrive/Ling447_finalPJ/')
-try:
-    object = facebook_graph.get_object(id = FACEBOOK_PROFILE_ID, fields = 'posts.limit(2){created_time, message, id, comments}')
-    for post in object['posts']['data']:
-        postID = post['id']
-        postContent = post['message']
-        postTime = post['created_time']
-        #create a file for the post
-        print directory + postID + '.txt'
-        file = open(directory + '/' + postID + '.txt', 'w')
-        #write content, time
-        file.write(postTime.encode('utf-8') + '\n' + postContent.encode('utf-8') + '\n')
-        #if no comment on the post, pass and go to the next post
-        try:
-            comments = post['comments']
-            for comment in comments['data']:
-                time = comment['created_time']
-                content = comment['message']
-                file.write(time.encode('utf-8') + '\n' + content.encode('utf-8') + '\n')
-        except KeyError as e:
-            print e.message
-            pass
-        file.close()
+#start date 01/11/2016
+startDate = 1394323200 #change to 2014-03-09 for now #1477958400
+until = startDate
+#end date 01/11/2006
+endDate = 1162339200
+#first time request object, do not need to check paging
+firstTime = True
+while (firstTime or lastPostDate >= endDate and 'paging' in object['posts'].keys() and 'next' in object['posts']['paging'].keys() and object['posts']['paging']['next']):
+    if not (firstTime):
+        nextUrl = object['posts']['paging']['next']
+        parsed = urlparse.urlparse(nextUrl)
+        until = int(urlparse.parse_qs(parsed.query)['until'][0])
+    try:
+        object = facebook_graph.get_object(id = FACEBOOK_PROFILE_ID, fields = 'posts.since(%s).limit(100).until(%s){created_time, message, id, comments}' %(endDate, until))
+        #print object
+        for post in object['posts']['data']:
+            try:
+                firstTime = False
+                postID = post['id']
+                postContent = post['message']
+                postTime = post['created_time']
+                #create a file for the post
+                file = open(directory + '/' + postID + '.txt', 'w')
+                #write content, time
+                file.write(postTime.encode('utf-8') + '\n' + postContent.encode('utf-8') + '\n')
+                #if no comment on the post, pass and go to the next post
+                comments = post['comments']
+                for comment in comments['data']:
+                    commenttime = comment['created_time']
+                    content = comment['message']
+                    file.write(commenttime.encode('utf-8') + '\n' + content.encode('utf-8') + '\n')
+                file.close()
+            except KeyError as e:
+                print e.message
+                pass
+            
 
-except facebook.GraphAPIError as e:
-    print 'Something went wrong:', e.type, e.message
+        #can only do 100 posts a request, so keep requesting until end
+        lastPostDate = time.mktime(time.strptime(postTime[:10], '%Y-%m-%d'))
+
+
+    except facebook.GraphAPIError as e:
+        print 'Something went wrong:', e.type, e.message
+
+
