@@ -2,9 +2,9 @@
     Get all posts with timestamps and their comments with timestamps from a list of Facebook public pages
     For each page, a folder with the name of the page is created in the home directory
     A txt document with name = post_id is created for each post with format:
-        first line: post content
-        second line: creation date
-        3rd - : comment, creation date. each comment one line
+        first line: creation date
+        second line: post content
+        3rd - : creation date of comment, comment. each comment: one line time, next line content
 '''
 
 import facebook
@@ -12,6 +12,7 @@ import urllib
 import urlparse
 import subprocess
 import warnings
+import os
 from utf8Encode import *
 
 #import app ID, app secret, and profile ID
@@ -56,21 +57,30 @@ facebook_graph = facebook.GraphAPI(oauth_access_token)
 '''
     SECTION: Get the data!
 '''
+#directory to save the files
+directory = os.path.abspath('/Users/jennytou/Desktop/Umich/Fall2016/ling447/finalPJ/gDrive/Ling447_finalPJ/')
 try:
-    fb_response = facebook_graph.get_object(id = FACEBOOK_PROFILE_ID, fields = 'posts')
-    for post in fb_response['posts']['data']:
-        time = post['created_time']
-        content = post['message']
-        postid = post['id']
+    object = facebook_graph.get_object(id = FACEBOOK_PROFILE_ID, fields = 'posts.limit(2){created_time, message, id, comments}')
+    for post in object['posts']['data']:
+        postID = post['id']
+        postContent = post['message']
+        postTime = post['created_time']
+        #create a file for the post
+        print directory + postID + '.txt'
+        file = open(directory + '/' + postID + '.txt', 'w')
+        #write content, time
+        file.write(postTime.encode('utf-8') + '\n' + postContent.encode('utf-8') + '\n')
+        #if no comment on the post, pass and go to the next post
         try:
-            comments = facebook_graph.get_connections(id = postid, connection_name = 'comments')
+            comments = post['comments']
             for comment in comments['data']:
                 time = comment['created_time']
                 content = comment['message']
-                print content
-        except facebook.GraphAPIError as e:
-            print 'error in getting comments', e.type, e.message
+                file.write(time.encode('utf-8') + '\n' + content.encode('utf-8') + '\n')
+        except KeyError as e:
+            print e.message
+            pass
+        file.close()
 
-#print fb_response
 except facebook.GraphAPIError as e:
     print 'Something went wrong:', e.type, e.message
