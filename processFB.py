@@ -15,16 +15,21 @@ from nltk.text import Text
 def importData():
     data = []
     totalChar = 0
+    posttext = ''
     # a list of chars to get rid of
-    punc = u'=!@#$%^&*()《》<>[]{},.!。，、⋯⋯〉〈：:＝=－、｜|〗〖'
+    #mystring = '不 如 你 都 係 肥 返 啦 好 嗎 …'
+    punc = u'=!@#$%^&*()《》<>[]{},.!。，、⋯⋯〉〈：:＝=－、｜|〗〖… ?\n'
     mapping = dict.fromkeys(map(ord,punc))
+    #mystring = mystring.decode('utf-8').translate(mapping)
+    #print mystring
     # loop through all .txt in all directories in the file directory
     PARENT = os.path.abspath('/Users/jennytou/Desktop/Umich/Fall2016/ling447/finalPJ/gDrive/Ling447_finalPJ')
     for root, dirs, junk in os.walk(PARENT):
         #each text file
         for name in dirs[:1]:
             dirName = os.path.join(root, name)
-            for text in os.listdir(dirName):
+            for text in os.listdir(dirName)[:3]:
+                print text
                 if os.path.isfile(os.path.join(dirName, text)) and (os.path.splitext(text)[-1].lower() == '.txt'):
                     line = ''
                     first = True
@@ -35,7 +40,6 @@ def importData():
                                 date = line
                                 first = False
                                 line = ''
-                            posttext = ''
                             #read till the next date
                             if (len(line) < 10 ) or (not re.match('\d{4}-\d{2}-\d{2}', line[0:10])):
                                 #print line
@@ -46,9 +50,10 @@ def importData():
                                     posttext = posttext + line
                                 else:
                                     posttext = line
-                                    
-                            data.append((name, date, posttext))
-                            date = line
+                            else:
+                                data.append((name, date, posttext))
+                                date = line
+                                posttext = ''
                         #print 'this .txt has ' + str(len(data))
             print str(name) +' has ' +str(len(data)) + ' and characters ' + str(totalChar)
     return data
@@ -57,7 +62,7 @@ def tokenize(data):
     newList = []
     for item in data:
         token_list = []
-        for char in item[2][0]:
+        for char in item[2]:
             token_list.append(char.encode('utf-8'))
         newList.append((item[0], item[1], token_list))
     return newList
@@ -99,7 +104,7 @@ class ConcordanceIndexDate(nltk.ConcordanceIndex):
             self._offsets[word].append(index)
 
 
-    def print_concordance(self, word, width=50, lines=25):
+    def print_concordance(self, word, width=50, lines=50):
         half_width = (width - len(word) - 2) // 2
         context = width // 4 # approx number of words of context
         offsets = self.offsets(word)
@@ -111,19 +116,18 @@ class ConcordanceIndexDate(nltk.ConcordanceIndex):
                     break
                 leftBoundry = min(context, i)
                 left = (' '.join([x.decode('utf-8') for x in self._tokens[i- leftBoundry:i]]))    # was context decoded here for display purposes
-                print len(self._tokens)
+                #print len(self._tokens)
                 rightBoundry = min(context, len(self._tokens) - i - 1)
                 right = ' '.join([x.decode('utf-8') for x in self._tokens[i+1:i + rightBoundry + 1]])    # :i+context decoded here for display purposes
                 left = left[-half_width:]
                 right = right[:half_width]
+                print self._date
                 date = str(self._date)
                 leftPadding = u'－ ' * (context - leftBoundry)
                 rightPadding = u'－ ' * (context - rightBoundry)
-                print rightBoundry
-                print(' '.join([' ' * half_width, leftPadding, left, self._tokens[i].decode('utf-8'), right, rightPadding, date]))  # decoded here for display purposes
+                #print rightBoundry
+                print(' '.join([leftPadding, left, self._tokens[i].decode('utf-8'), right, rightPadding, date]))  # decoded here for display purposes
                 lines -= 1
-        else:
-            print("No matches")
         return len(offsets)
 '''
 def showConcordance(target, data):
@@ -149,8 +153,9 @@ def showConcordance(targets, data):
         print "%d results in total" %count
 
 if __name__ == '__main__':
-    #data = importData()
-    data = [(1,123,[u'找'u'你'u'呀']), (1, 234, [u'找'u'你'u'呀'u'找'u'找'u'找'u'找'u'找'u'找'])]
+    data = importData()
+    #data = [(1,123,[u'找'u'你'u'呀']), (1, 234, [u'找'u'你'u'呀'u'找'u'找'u'找'u'找'u'找'u'找'])] #dummydata
     data = tokenize(data)
+    #print data
     showConcordance([u'你'],data)
 
